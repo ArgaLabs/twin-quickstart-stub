@@ -1,0 +1,27 @@
+name: Container smoke test
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build current base and security packages
+        run: docker build --pull --no-cache --tag quickstart:ci .
+      - name: Verify HTTP stub
+        shell: bash
+        run: |
+          set -euo pipefail
+          container=$(docker run --detach quickstart:ci)
+          trap 'docker logs "$container"; docker rm --force "$container"' EXIT
+          for attempt in $(seq 1 30); do
+            if docker exec "$container" python -c 'import json, urllib.request; data=json.load(urllib.request.urlopen("http://127.0.0.1:8000/healthz", timeout=2)); assert data == {"status": "ok", "service": "arga-twin-stub"}' 2>/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
