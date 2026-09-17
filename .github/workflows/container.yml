@@ -12,6 +12,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build current base and security packages
         run: docker build --pull --no-cache --tag quickstart:ci .
+      - name: Verify offline pip bootstrap
+        run: |
+          docker run --rm --network=none quickstart:ci sh -ec 'python -m venv /tmp/bootstrap; /tmp/bootstrap/bin/python -m pip --version; python -c "import ensurepip, importlib.metadata; assert ensurepip.version() == importlib.metadata.version(\"pip\")"'
       - name: Verify HTTP stub
         shell: bash
         run: |
